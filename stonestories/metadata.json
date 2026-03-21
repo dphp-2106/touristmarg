@@ -1,0 +1,5 @@
+{
+  "name": "StoneStories",
+  "description": "AI-powered heritage and temple guide. Upload photos of heritage sites or carvings to discover their history, mythology, and hidden stories.",
+  "requestFramePermissions": ["camera", "microphone"]
+}
