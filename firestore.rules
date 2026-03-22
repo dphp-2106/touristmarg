@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: user_history
+    // Document ID: auto-generated
+    // Fields:
+    //   - user: map (required)
+    //     - uid: string (required)
+    //     - userEmail: string
+    //     - displayName: string
+    //   - context: map
+    //     - siteName: string
+    //     - locationName: string
+    //     - coordinates: map
+    //       - lat: number
+    //       - lon: number
+    //   - content: map
+    //     - fullStoryText: string
+    //     - suggestedQuestions: list
+    //     - identifiedDeity: string
+    //   - media: map
+    //     - uploadedImageURL: string
+    //     - wikiThumbnail: string
+    //   - meta: map (required)
+    //     - languageUsed: string
+    //     - timeSpent: number
+    //     - timestamp: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    function isValidUserHistory(data) {
+      return data.user is map &&
+             data.user.uid is string &&
+             data.meta is map &&
+             data.meta.timestamp is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /user_history/{historyId} {
+      // Users can only read their own history
+      allow read: if isAuthenticated() && request.auth.uid == resource.data.user.uid;
+      
+      // Users can only create history for themselves
+      allow create: if isAuthenticated() && 
+                    request.auth.uid == request.resource.data.user.uid &&
+                    isValidUserHistory(request.resource.data);
+      
+      // History is immutable once created
+      allow update, delete: if false;
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
