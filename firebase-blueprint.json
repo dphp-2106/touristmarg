@@ -1,0 +1,65 @@
+{
+  "entities": {
+    "UserHistory": {
+      "title": "User History",
+      "description": "A record of a heritage site search and analysis.",
+      "type": "object",
+      "properties": {
+        "user": {
+          "type": "object",
+          "properties": {
+            "uid": { "type": "string" },
+            "userEmail": { "type": "string" },
+            "displayName": { "type": "string" }
+          },
+          "required": ["uid"]
+        },
+        "context": {
+          "type": "object",
+          "properties": {
+            "siteName": { "type": "string" },
+            "locationName": { "type": "string" },
+            "coordinates": {
+              "type": "object",
+              "properties": {
+                "lat": { "type": "number" },
+                "lon": { "type": "number" }
+              }
+            }
+          }
+        },
+        "content": {
+          "type": "object",
+          "properties": {
+            "fullStoryText": { "type": "string" },
+            "suggestedQuestions": { "type": "array", "items": { "type": "string" } },
+            "identifiedDeity": { "type": "string" }
+          }
+        },
+        "media": {
+          "type": "object",
+          "properties": {
+            "uploadedImageURL": { "type": "string" },
+            "wikiThumbnail": { "type": "string" }
+          }
+        },
+        "meta": {
+          "type": "object",
+          "properties": {
+            "languageUsed": { "type": "string" },
+            "timeSpent": { "type": "number" },
+            "timestamp": { "type": "string", "format": "date-time" },
+            "imageHash": { "type": "string" }
+          }
+        }
+      },
+      "required": ["user", "meta"]
+    }
+  },
+  "firestore": {
+    "/user_history/{historyId}": {
+      "schema": "UserHistory",
+      "description": "Collection of heritage site analysis history for users."
+    }
+  }
+}
