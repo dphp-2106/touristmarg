@@ -6,12 +6,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import {
+import { 
   CheckCircle2,
   X,
   MessageSquare,
   ChevronRight,
-  Loader2,
+  Loader2, 
   ArrowLeft,
   Globe,
   Play,
@@ -42,7 +42,6 @@ import { twMerge } from 'tailwind-merge';
 import { Language, HeritageInfo, CommunityStory, ChatMessage, Page } from './types';
 import { analyzeHeritageImage, generateAudio, translateHeritageInfo, chatWithStoneStream, streamHeritageGreeting, fetchDeepDiveData, identifyHeritageQuick } from './services/aiService';
 import { compressImage, generateHash } from './utils/imageUtils';
-import { getTranslation } from './translations';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { auth, firestore, loginWithGoogle, logout, onAuthStateChanged, User, saveUserHistory, checkHistoryCache, updateUserHistory } from './firebase';
@@ -123,23 +122,6 @@ function cn(...inputs: ClassValue[]) {
 }
 
 const LANGUAGES: { code: Language; name: string; native: string }[] = [
-  { code: 'en', name: 'English', native: 'English' },
-  { code: 'hi', name: 'Hindi', native: 'हिन्दी' },
-  { code: 'gu', name: 'Gujarati', native: 'ગુજરાતી' },
-  { code: 'ta', name: 'Tamil', native: 'தமிழ்' },
-  { code: 'bn', name: 'Bengali', native: 'বাংলা' },
-  { code: 'mr', name: 'Marathi', native: 'मराठी' },
-  { code: 'te', name: 'Telugu', native: 'తెలుగు' },
-  { code: 'kn', name: 'Kannada', native: 'ಕನ್ನಡ' },
-  { code: 'as', name: 'Assamese', native: 'অসমীয়া' },
-  { code: 'ml', name: 'Malayalam', native: 'മലയാളം' },
-  { code: 'or', name: 'Odia', native: 'ଓଡ଼ିଆ' },
-  { code: 'pa', name: 'Punjabi', native: 'ਪੰਜਾਬੀ' },
-];
-
-// Languages for content translation (Change Language button on results page)
-// Includes all languages for comprehensive content translation
-const CONTENT_LANGUAGES: { code: Language; name: string; native: string }[] = [
   { code: 'en', name: 'English', native: 'English' },
   { code: 'hi', name: 'Hindi', native: 'हिन्दी' },
   { code: 'gu', name: 'Gujarati', native: 'ગુજરાતી' },
@@ -259,20 +241,20 @@ export default function App() {
   const exportAsScroll = async () => {
     if (!results || !scrollRef.current) return;
     setIsExporting(true);
-
+    
     try {
       const canvas = await html2canvas(scrollRef.current, {
         scale: 2,
         useCORS: true,
         backgroundColor: '#f5f2ed'
       });
-
+      
       const imgData = canvas.toDataURL('image/jpeg', 0.9);
       const pdf = new jsPDF('p', 'mm', 'a4');
       const imgProps = pdf.getImageProperties(imgData);
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
+      
       pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`${results.name.replace(/\s+/g, '_')}_Scroll.pdf`);
     } catch (error) {
@@ -308,7 +290,7 @@ export default function App() {
       identifiedDeity: item.content.identifiedDeity,
       coordinates: item.context.coordinates
     };
-
+    
     setResults(historyResults);
     setCurrentPage('results');
     setActiveTab('history');
@@ -389,8 +371,8 @@ export default function App() {
   const startCamera = async () => {
     setIsCameraOpen(true);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
       });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -463,7 +445,7 @@ export default function App() {
 
   const startAnalysis = async () => {
     if (!selectedImage) return;
-
+    
     setIsAnalyzing(true);
     const startTime = Date.now();
     setAnalysisStartTime(startTime);
@@ -471,11 +453,11 @@ export default function App() {
     try {
       // 1. Minimal Image Pre-processing
       const thumbnail = await compressImage(selectedImage, 256, 0.5);
-
+      
       // 2. Zero Initial Dependencies: Call Gemini 3 Flash only for a 3-sentence visual description
       // DO NOT call Wikipedia, Photon, or any other API in the first step.
       const info = await identifyHeritageQuick(thumbnail, language);
-
+      
       // 3. Set results with minimal data
       const quickResults: HeritageInfo = {
         id: crypto.randomUUID(),
@@ -558,7 +540,7 @@ export default function App() {
 
   const handleAudioNarration = async () => {
     if (!results) return;
-
+    
     if (audioUrl) {
       if (isPlaying) {
         audioRef.current?.pause();
@@ -571,10 +553,10 @@ export default function App() {
     }
 
     setIsPlaying(true);
-
+    
     // Speak the name and the content of the active tab
     let contentToSpeak = `${results.name}. `;
-
+    
     if (activeTab === 'history') {
       contentToSpeak += `History. ${results.summaryHistory}. `;
       if (showDeepDive.history) contentToSpeak += results.fullHistory;
@@ -644,7 +626,7 @@ export default function App() {
 
     const userMsg: ChatMessage = { role: 'user', content: input };
     let updatedHistory = [...(results.chatHistory || []), userMsg];
-
+    
     // Trim history if it's too long
     const MAX_HISTORY = 10;
     if (updatedHistory.length > MAX_HISTORY) {
@@ -659,7 +641,7 @@ export default function App() {
       // Streaming Response for 'Living Stone'
       let streamingAnswer = "";
       const stoneMsg: ChatMessage = { role: 'stone', content: "" };
-
+      
       // Add a placeholder message for the stone
       setResults(prev => {
         if (!prev) return null;
@@ -667,7 +649,7 @@ export default function App() {
       });
 
       const stream = chatWithStoneStream(results, input, updatedHistory);
-
+      
       for await (const chunk of stream) {
         streamingAnswer += chunk;
         setResults(prev => {
@@ -722,9 +704,9 @@ export default function App() {
           <div className="w-8 h-8 bg-maroon rounded-lg flex items-center justify-center text-gold">
             <HistoryIcon size={18} />
           </div>
-          <h1 className="text-xl font-serif font-bold text-maroon tracking-tight">{getTranslation('appTitle', language)}</h1>
+          <h1 className="text-xl font-serif font-bold text-maroon tracking-tight">StoneStories</h1>
         </div>
-
+        
         <div className="flex items-center gap-3">
           {/* Auth Button */}
           {user ? (
@@ -741,16 +723,16 @@ export default function App() {
                   onClick={logout}
                   className="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors hover:bg-maroon/5 text-maroon flex items-center gap-2"
                 >
-                  <LogOut size={14} /> {getTranslation('signOut', language)}
+                  <LogOut size={14} /> Sign Out
                 </button>
               </div>
             </div>
           ) : (
-            <button
+            <button 
               onClick={loginWithGoogle}
               className="flex items-center gap-2 px-4 py-2 bg-maroon text-white rounded-full text-xs font-bold hover:shadow-lg transition-all"
             >
-              <LogIn size={14} /> {getTranslation('login', language)}
+              <LogIn size={14} /> Login
             </button>
           )}
 
@@ -800,10 +782,10 @@ export default function App() {
                   <Sparkles className="text-gold animate-pulse" size={32} />
                 </motion.div>
                 <h2 className="text-4xl font-serif font-bold text-maroon leading-tight">
-                  {getTranslation('theLivingStones', language)}
+                  The Living Stones
                 </h2>
                 <p className="text-ink/70 text-lg italic font-serif">
-                  {getTranslation('quote', language)}
+                  "I have stood for a thousand years. Let me tell you what I have seen."
                 </p>
               </div>
 
@@ -811,7 +793,7 @@ export default function App() {
               <div className="grid grid-cols-2 gap-4 relative z-10">
                 <div className="relative group">
                   <div className="absolute -inset-2 bg-maroon/10 rounded-3xl blur-lg group-hover:bg-maroon/20 transition-all"></div>
-                  <button
+                  <button 
                     onClick={startCamera}
                     className="relative w-full bg-white border-2 border-sandstone rounded-3xl p-8 text-center cursor-pointer hover:border-maroon transition-all flex flex-col items-center gap-3"
                   >
@@ -819,7 +801,7 @@ export default function App() {
                       <Camera size={24} />
                     </div>
                     <div>
-                      <p className="font-bold text-maroon">{getTranslation('liveCamera', language)}</p>
+                      <p className="font-bold text-maroon">Live Camera</p>
                       <p className="text-[10px] text-ink/50">Snap a photo now</p>
                     </div>
                   </button>
@@ -834,7 +816,7 @@ export default function App() {
                         <Upload size={24} />
                       </div>
                       <div>
-                        <p className="font-bold text-maroon">{getTranslation('uploadFile', language)}</p>
+                        <p className="font-bold text-maroon">Upload File</p>
                         <p className="text-[10px] text-ink/50">From your gallery</p>
                       </div>
                     </div>
@@ -880,8 +862,8 @@ export default function App() {
 
               <div className="heritage-card aspect-square relative">
                 {selectedImage && <img src={selectedImage} alt="Selected" className="w-full h-full object-cover" />}
-                <button
-                  onClick={() => setSelectedImage(null)}
+                <button 
+                  onClick={() => setSelectedImage(null)} 
                   className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full backdrop-blur-md"
                 >
                   <X size={20} />
@@ -890,32 +872,32 @@ export default function App() {
 
               <div className="space-y-4">
                 <h3 className="text-xl font-serif font-bold text-maroon">What are we looking at?</h3>
-
+                
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-maroon uppercase tracking-wider">Site Name (Optional)</label>
-                    <input
-                      type="text"
+                    <input 
+                      type="text" 
                       value={siteName}
                       onChange={(e) => setSiteName(e.target.value)}
-                      className="w-full bg-white border border-black/5 rounded-xl px-4 py-3 focus:ring-2 ring-maroon/20 outline-none"
-                      placeholder="e.g. Somnath Temple"
+                      className="w-full bg-white border border-black/5 rounded-xl px-4 py-3 focus:ring-2 ring-maroon/20 outline-none" 
+                      placeholder="e.g. Somnath Temple" 
                     />
                   </div>
 
                   <div className="space-y-2 relative">
                     <label className="text-xs font-bold text-maroon uppercase tracking-wider">Location (Optional)</label>
-                    <input
-                      type="text"
+                    <input 
+                      type="text" 
                       value={location}
                       onChange={handleLocationChange}
                       onFocus={() => locationSuggestions.length > 0 && setShowSuggestions(true)}
-                      className="w-full bg-white border border-black/5 rounded-xl px-4 py-3 focus:ring-2 ring-maroon/20 outline-none"
-                      placeholder="e.g. Veraval, Gujarat"
+                      className="w-full bg-white border border-black/5 rounded-xl px-4 py-3 focus:ring-2 ring-maroon/20 outline-none" 
+                      placeholder="e.g. Veraval, Gujarat" 
                     />
                     <AnimatePresence>
                       {showSuggestions && locationSuggestions.length > 0 && (
-                        <motion.div
+                        <motion.div 
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
@@ -947,12 +929,12 @@ export default function App() {
                       </div>
                     )}
                   </div>
-
+                  
                   <p className="text-[10px] text-ink/40 italic">Providing the name and location helps our AI give more accurate stories.</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <button
+                  <button 
                     onClick={() => setUploadMode('full')}
                     className={cn(
                       "p-4 rounded-2xl border-2 transition-all text-left space-y-2",
@@ -965,7 +947,7 @@ export default function App() {
                       <p className="text-xs text-ink/50">Overall history & info</p>
                     </div>
                   </button>
-                  <button
+                  <button 
                     onClick={() => setUploadMode('specific')}
                     className={cn(
                       "p-4 rounded-2xl border-2 transition-all text-left space-y-2",
@@ -981,7 +963,7 @@ export default function App() {
                 </div>
               </div>
 
-              <button
+              <button 
                 onClick={startAnalysis}
                 disabled={isAnalyzing}
                 className="w-full btn-primary flex items-center justify-center gap-2"
@@ -989,12 +971,12 @@ export default function App() {
                 {isAnalyzing ? (
                   <>
                     <Loader2 className="animate-spin" />
-                    {getTranslation('readingStones', language)}
+                    Reading the stones...
                   </>
                 ) : (
                   <>
                     <Play size={20} />
-                    {getTranslation('analyzeSite', language)}
+                    Analyze Site
                   </>
                 )}
               </button>
@@ -1002,7 +984,7 @@ export default function App() {
           )}
 
           {isAnalyzing && (
-            <motion.div
+            <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-8 text-center"
@@ -1013,7 +995,7 @@ export default function App() {
               </div>
 
               <Loader2 className="animate-spin text-gold mb-4" size={40} />
-              <h3 className="text-2xl font-serif text-white mb-2">{getTranslation('analyzing', language)}</h3>
+              <h3 className="text-2xl font-serif text-white mb-2">Analyzing...</h3>
               <p className="text-white/60 text-sm">Identifying heritage in seconds</p>
             </motion.div>
           )}
@@ -1029,8 +1011,8 @@ export default function App() {
               <div className="relative h-72">
                 <img src={results.imageUrl} alt={results.name} className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-                <button
-                  onClick={() => goTo('home')}
+                <button 
+                  onClick={() => goTo('home')} 
                   className="absolute top-4 left-4 p-2 bg-white/20 backdrop-blur-md text-white rounded-full"
                 >
                   <ArrowLeft size={20} />
@@ -1046,14 +1028,14 @@ export default function App() {
                     <p className="text-gold flex items-center gap-1 text-sm">
                       <Globe size={14} /> {LANGUAGES.find(l => l.code === results.language)?.native}
                     </p>
-
+                    
                     {/* Inline Language Switcher */}
                     <div className="relative group">
                       <button className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs text-white border border-white/20 flex items-center gap-1">
-                        {getTranslation('changeLanguage', language)} <ChevronRight size={12} />
+                        Change Language <ChevronRight size={12} />
                       </button>
-                      <div className="absolute right-0 bottom-full mb-2 bg-white rounded-xl shadow-xl border border-black/5 p-2 hidden group-hover:block z-50 w-40 max-h-64 overflow-y-auto">
-                        {CONTENT_LANGUAGES.map((lang) => (
+                      <div className="absolute right-0 bottom-full mb-2 bg-white rounded-xl shadow-xl border border-black/5 p-2 hidden group-hover:block z-50 w-40">
+                        {LANGUAGES.map((lang) => (
                           <button
                             key={lang.code}
                             onClick={() => changeResultLanguage(lang.code)}
@@ -1106,7 +1088,7 @@ export default function App() {
                       Reveal hidden historical records, Wikipedia archives, and detailed iconography analysis.
                     </p>
                   </div>
-                  <button
+                  <button 
                     onClick={handleDeepDive}
                     disabled={isDeepDiving}
                     className="w-full py-5 bg-maroon text-white font-bold rounded-2xl shadow-xl shadow-maroon/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1119,7 +1101,7 @@ export default function App() {
                     ) : (
                       <>
                         <Sparkles size={24} className="text-gold" />
-                        {getTranslation('revealSecrets', language)}
+                        Reveal Ancient Secrets
                       </>
                     )}
                   </button>
@@ -1128,16 +1110,16 @@ export default function App() {
 
               {/* Actions Bar */}
               <div className="bg-white border-b border-black/5 px-6 py-4 flex items-center justify-between sticky top-[57px] z-40">
-                <button
+                <button 
                   onClick={handleAudioNarration}
                   className="flex items-center gap-2 text-maroon font-medium"
                 >
                   <div className="w-10 h-10 bg-maroon/10 rounded-full flex items-center justify-center">
                     {isPlaying ? <Pause size={20} /> : <Volume2 size={20} />}
                   </div>
-                  {getTranslation('audioGuide', language)}
+                  Audio Guide
                 </button>
-                <button
+                <button 
                   onClick={() => saveOffline(results)}
                   disabled={offlineGuides.some(g => g.id === results.id)}
                   className="flex items-center gap-2 text-maroon font-medium disabled:text-ink/30"
@@ -1145,19 +1127,19 @@ export default function App() {
                   <div className="w-10 h-10 bg-maroon/10 rounded-full flex items-center justify-center">
                     {offlineGuides.some(g => g.id === results.id) ? <CheckCircle2 size={20} /> : <Download size={20} />}
                   </div>
-                  {offlineGuides.some(g => g.id === results.id) ? getTranslation('saved', language) : getTranslation('saveOffline', language)}
+                  {offlineGuides.some(g => g.id === results.id) ? 'Saved' : 'Save Offline'}
                 </button>
               </div>
 
               {/* Tabs */}
               <div className="flex overflow-x-auto bg-white border-b border-black/5 px-4 no-scrollbar sticky top-[129px] z-40">
                 {[
-                  { id: 'history', label: getTranslation('history', language), icon: <HistoryIcon size={16} /> },
-                  { id: 'mythology', label: getTranslation('mythology', language), icon: <BookOpen size={16} /> },
-                  { id: 'structure', label: getTranslation('structure', language), icon: <Layout size={16} /> },
-                  ...(results.mode === 'specific' ? [{ id: 'carving', label: getTranslation('theCarving', language), icon: <Plus size={16} /> }] : []),
-                  { id: 'chat', label: getTranslation('askTheStone', language), icon: <MessageSquare size={16} /> },
-                  { id: 'trivia', label: getTranslation('specialFacts', language), icon: <Info size={16} /> }
+                  { id: 'history', label: 'History', icon: <HistoryIcon size={16} /> },
+                  { id: 'mythology', label: 'Mythology', icon: <BookOpen size={16} /> },
+                  { id: 'structure', label: 'Structure', icon: <Layout size={16} /> },
+                  ...(results.mode === 'specific' ? [{ id: 'carving', label: 'The Carving', icon: <Plus size={16} /> }] : []),
+                  { id: 'chat', label: 'Ask the Stone', icon: <MessageSquare size={16} /> },
+                  { id: 'trivia', label: 'Special Facts', icon: <Info size={16} /> }
                 ].map((tab) => (
                   <button
                     key={tab.id}
@@ -1191,7 +1173,7 @@ export default function App() {
                             <h5 className="text-xs font-bold text-maroon uppercase tracking-widest">Historical Gallery</h5>
                             <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
                               {results.historicalImages.map((img, idx) => (
-                                <motion.div
+                                <motion.div 
                                   key={idx}
                                   whileHover={{ scale: 1.05 }}
                                   className="flex-shrink-0 w-48 h-32 rounded-2xl overflow-hidden border border-black/5 shadow-md"
@@ -1230,7 +1212,7 @@ export default function App() {
                           </h4>
                           <p className="text-ink/70 italic leading-relaxed relative z-10">{results.summaryHistory}</p>
                         </div>
-
+                        
                         {results.wikipediaSummary ? (
                           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                             <div className="p-6 bg-white rounded-3xl border border-black/5 shadow-sm space-y-4">
@@ -1269,7 +1251,7 @@ export default function App() {
                           </h4>
                           <p className="text-ink/70 italic leading-relaxed relative z-10">{results.summaryMythology}</p>
                         </div>
-
+                        
                         {results.wikipediaSummary ? (
                           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                             <div className="space-y-4">
@@ -1299,15 +1281,15 @@ export default function App() {
                           </h4>
                           <p className="text-ink/70 italic leading-relaxed relative z-10">{results.summaryCarving}</p>
                         </div>
-
+                        
                         {!showDeepDive.carving ? (
                           <div className="text-center space-y-4">
                             <p className="text-xs text-ink/40 uppercase tracking-widest font-bold">Decode the stone?</p>
-                            <button
+                            <button 
                               onClick={() => toggleDeepDive('carving')}
                               className="w-full py-4 bg-maroon text-white font-bold rounded-2xl hover:shadow-lg hover:shadow-maroon/20 transition-all flex items-center justify-center gap-2 group"
                             >
-                              <Plus size={20} className="group-hover:scale-110 transition-transform" />
+                              <Plus size={20} className="group-hover:scale-110 transition-transform" /> 
                               Reveal Carving Secrets
                             </button>
                           </div>
@@ -1333,7 +1315,7 @@ export default function App() {
                             {results.templeType || 'Ancient'} Style
                           </span>
                         </div>
-
+                        
                         {results.structureParts && results.structureParts.length > 0 ? (
                           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1366,12 +1348,12 @@ export default function App() {
                         <div className="bg-maroon/5 p-4 rounded-2xl border border-maroon/10 space-y-4">
                           <div className="flex items-center gap-2 text-maroon">
                             <Plus size={18} />
-                            <h4 className="font-bold text-sm uppercase tracking-wider">{getTranslation('askTheStone', language)}</h4>
+                            <h4 className="font-bold text-sm uppercase tracking-wider">Ask the Stone</h4>
                           </div>
                           <p className="text-xs text-ink/60 italic">"I have stood here for centuries. Ask me anything about my secrets, my creators, or the gods I guard."</p>
                         </div>
 
-                        <div
+                        <div 
                           ref={chatScrollRef}
                           className="space-y-4 max-h-[400px] overflow-y-auto p-2 no-scrollbar scroll-smooth"
                         >
@@ -1420,7 +1402,7 @@ export default function App() {
                               value={chatInput}
                               onChange={(e) => setChatInput(e.target.value)}
                               onKeyDown={(e) => e.key === 'Enter' && handleChat()}
-                              placeholder={getTranslation('typeQuestion', language)}
+                              placeholder="Type your question..."
                               className="w-full bg-white border border-black/10 rounded-xl px-4 py-3 pr-12 text-sm focus:outline-none focus:border-maroon transition-colors"
                             />
                             <button
@@ -1466,14 +1448,14 @@ export default function App() {
 
               <div className="relative z-10 p-6 space-y-6 flex-1 flex flex-col">
                 <div className="space-y-4">
-                  <h2 className="text-3xl font-serif font-bold text-maroon text-center">{getTranslation('myJourney', language)}</h2>
-
+                  <h2 className="text-3xl font-serif font-bold text-maroon text-center">My Heritage Journey</h2>
+                  
                   {/* Search Bar */}
                   <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-maroon/40" size={18} />
-                    <input
+                    <input 
                       type="text"
-                      placeholder={getTranslation('searchJourney', language)}
+                      placeholder="Search your journey..."
                       value={journeySearch}
                       onChange={(e) => setJourneySearch(e.target.value)}
                       className="w-full bg-white/80 backdrop-blur-sm border border-maroon/20 rounded-2xl pl-12 pr-4 py-3 text-sm focus:outline-none focus:border-maroon shadow-sm"
@@ -1488,7 +1470,7 @@ export default function App() {
                     <div className="absolute left-3 top-0 bottom-0 w-0.5 bg-gradient-to-b from-maroon/40 via-maroon/10 to-transparent"></div>
 
                     {cloudHistory
-                      .filter(item =>
+                      .filter(item => 
                         item.context.siteName.toLowerCase().includes(journeySearch.toLowerCase()) ||
                         item.context.locationName.toLowerCase().includes(journeySearch.toLowerCase())
                       )
@@ -1504,7 +1486,7 @@ export default function App() {
                           <div className="absolute -left-[25px] top-6 w-4 h-4 rounded-full bg-maroon border-4 border-paper shadow-md z-10"></div>
 
                           {/* History Card */}
-                          <div
+                          <div 
                             onClick={() => {
                               // Quick-Load Action: Populate main states, disable Gemini call
                               const loadedResults: HeritageInfo = {
@@ -1533,8 +1515,8 @@ export default function App() {
                           >
                             <div className="flex gap-4">
                               <div className="relative w-20 h-20 shrink-0">
-                                <img
-                                  src={item.media.wikiThumbnail || item.media.uploadedImageURL}
+                                <img 
+                                  src={item.media.wikiThumbnail || item.media.uploadedImageURL} 
                                   alt={item.context.siteName}
                                   className="w-full h-full object-cover rounded-xl border border-black/5"
                                 />
@@ -1568,7 +1550,7 @@ export default function App() {
                         <div className="w-16 h-16 bg-maroon/5 rounded-full flex items-center justify-center mx-auto text-maroon/20">
                           <HistoryIcon size={32} />
                         </div>
-                        <p className="text-ink/40 text-sm italic">{getTranslation('journeyWaiting', language)}</p>
+                        <p className="text-ink/40 text-sm italic">Your journey is waiting to be written...</p>
                       </div>
                     )}
                   </div>
@@ -1586,21 +1568,21 @@ export default function App() {
               className="px-6 py-8 space-y-8"
             >
               <div className="space-y-2">
-                <h2 className="text-3xl font-serif font-bold text-maroon">{getTranslation('communityStories', language)}</h2>
-                <p className="text-ink/60 text-sm">{getTranslation('communityStoriesSubtitle', language)}</p>
+                <h2 className="text-3xl font-serif font-bold text-maroon">Community Stories</h2>
+                <p className="text-ink/60 text-sm">Knowledge shared by priests, elders, and travelers.</p>
               </div>
 
-              <button
+              <button 
                 onClick={() => setShowStoryForm(true)}
                 className="w-full py-4 border-2 border-dashed border-maroon/20 rounded-2xl text-maroon font-bold flex items-center justify-center gap-2 hover:bg-maroon/5 transition-all"
               >
-                <Plus size={20} /> {getTranslation('shareStory', language)}
+                <Plus size={20} /> Share a Story
               </button>
 
               <div className="space-y-6">
                 {communityStories.length === 0 ? (
                   <div className="text-center py-12 bg-white rounded-3xl border border-black/5">
-                    <p className="text-ink/40 text-sm italic">{getTranslation('noStoriesYet', language)}</p>
+                    <p className="text-ink/40 text-sm italic">No stories shared yet. Be the first to tell a legend!</p>
                   </div>
                 ) : (
                   communityStories.map((story) => (
@@ -1628,7 +1610,7 @@ export default function App() {
                         <p className="text-[10px] text-ink/40 flex items-center gap-1">
                           <Info size={10} /> {story.location}
                         </p>
-                        <button
+                        <button 
                           onClick={() => {
                             const updated = communityStories.map(s => s.id === story.id ? { ...s, upvotes: s.upvotes + 1 } : s);
                             setCommunityStories(updated);
@@ -1672,13 +1654,13 @@ export default function App() {
       {/* Story Form Modal */}
       <AnimatePresence>
         {showStoryForm && (
-          <motion.div
+          <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
           >
-            <motion.div
+            <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               className="bg-paper w-full max-w-sm rounded-3xl p-8 space-y-6"
@@ -1689,39 +1671,39 @@ export default function App() {
                   <X size={20} />
                 </button>
               </div>
-
+              
               <div className="space-y-4">
-                <input
-                  type="text"
+                <input 
+                  type="text" 
                   placeholder="Story Title"
                   value={newStory.title}
-                  onChange={e => setNewStory({ ...newStory, title: e.target.value })}
+                  onChange={e => setNewStory({...newStory, title: e.target.value})}
                   className="w-full bg-white border border-black/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-maroon"
                 />
-                <textarea
+                <textarea 
                   placeholder="The story, legend, or secret..."
                   rows={4}
                   value={newStory.content}
-                  onChange={e => setNewStory({ ...newStory, content: e.target.value })}
+                  onChange={e => setNewStory({...newStory, content: e.target.value})}
                   className="w-full bg-white border border-black/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-maroon resize-none"
                 />
-                <input
-                  type="text"
+                <input 
+                  type="text" 
                   placeholder="Your Name (e.g. Pandit Ramesh)"
                   value={newStory.author}
-                  onChange={e => setNewStory({ ...newStory, author: e.target.value })}
+                  onChange={e => setNewStory({...newStory, author: e.target.value})}
                   className="w-full bg-white border border-black/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-maroon"
                 />
-                <input
-                  type="text"
+                <input 
+                  type="text" 
                   placeholder="Location (e.g. Somnath Temple)"
                   value={newStory.location}
-                  onChange={e => setNewStory({ ...newStory, location: e.target.value })}
+                  onChange={e => setNewStory({...newStory, location: e.target.value})}
                   className="w-full bg-white border border-black/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-maroon"
                 />
               </div>
 
-              <button
+              <button 
                 onClick={submitStory}
                 className="w-full btn-primary"
               >
@@ -1735,32 +1717,32 @@ export default function App() {
       {/* Camera Overlay */}
       <AnimatePresence>
         {isCameraOpen && (
-          <motion.div
+          <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] bg-black flex flex-col"
           >
             <div className="flex-1 relative flex items-center justify-center">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
+              <video 
+                ref={videoRef} 
+                autoPlay 
+                playsInline 
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 border-[40px] border-black/20 pointer-events-none">
                 <div className="w-full h-full border-2 border-white/30 rounded-3xl"></div>
               </div>
             </div>
-
+            
             <div className="bg-black/80 backdrop-blur-xl p-8 flex items-center justify-around">
-              <button
+              <button 
                 onClick={stopCamera}
                 className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white"
               >
                 <X size={24} />
               </button>
-              <button
+              <button 
                 onClick={capturePhoto}
                 className="w-20 h-20 rounded-full bg-white p-1"
               >
