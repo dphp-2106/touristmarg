@@ -21,6 +21,13 @@ export interface ChatMessage {
 export interface HeritageInfo {
   id: string;
   firestoreId?: string;
+  /**
+   * If false, the uploaded image is not recognized as a StoneStories-eligible heritage/temple/carving scene.
+   * In that case, the UI should show only a short non-heritage message and avoid generating history.
+   */
+  isHeritage?: boolean;
+  nonHeritageMessage?: string;
+  heritageConfidence?: number;
   name: string;
   location?: string;
   summaryHistory: string;

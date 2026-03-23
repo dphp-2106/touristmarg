@@ -169,6 +169,25 @@ export async function identifyHeritageQuick(
   base64Image: string,
   language: Language
 ): Promise<Partial<HeritageInfo>> {
+  const parseJson = (rawText: string) => {
+    const cleaned = rawText
+      .replace(/```(?:json)?/g, '')
+      .replace(/```/g, '')
+      .trim();
+    try {
+      return JSON.parse(cleaned);
+    } catch {
+      // If the model returns malformed JSON, fail closed as non-heritage.
+      return {
+        isHeritage: false,
+        confidence: 0,
+        name: "",
+        description: "",
+        nonHeritageMessage: "This is not a heritage site. Please upload a temple, ancient carving, or heritage monument.",
+      };
+    }
+  };
+
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: [
@@ -181,14 +200,33 @@ export async function identifyHeritageQuick(
             },
           },
           {
-            text: `Identify this heritage site/carving. 
-            Language: ${LANGUAGE_NAMES[language]}.
+            text: `You are an image classifier for an app called "StoneStories".
+            Decide if the uploaded image clearly shows a StoneStories-eligible heritage scene:
+            (temple, ancient carvings, cave/fort/heritage monument, sacred architecture).
+
+            If the image is a normal/non-heritage photo (street, random house/building, everyday scene), mark it as non-heritage.
             
-            Return ONLY a JSON object:
+            Language: ${LANGUAGE_NAMES[language]}.
+
+            Return ONLY a JSON object with EXACTLY these keys:
             {
-              "name": "string",
-              "description": "string (exactly 3 sentences)"
-            }`,
+              "isHeritage": boolean,
+              "confidence": number (0 to 1),
+              "name": string, 
+              "description": string,
+              "nonHeritageMessage": string
+            }
+
+            STRICT RULES:
+            1. If isHeritage=true:
+               - "name" must be the heritage site/carving name (best guess).
+               - "description" must be EXACTLY 3 sentences in ${LANGUAGE_NAMES[language]}.
+               - "nonHeritageMessage" must be "".
+            2. If isHeritage=false:
+               - "name" must be "".
+               - "description" must be "".
+               - "nonHeritageMessage" must be EXACTLY 1 short sentence in ${LANGUAGE_NAMES[language]},
+                 telling the user this is not a heritage site and suggesting what to upload instead.`,
           },
         ],
       },
@@ -199,14 +237,19 @@ export async function identifyHeritageQuick(
     },
   });
 
-  const data = JSON.parse(response.text || "{}");
+  const data = parseJson(response.text || "{}");
 
   return {
-    name: data.name || "Unknown Heritage Site",
-    summaryHistory: data.description || "No description available.",
-    fullHistory: data.description || "No details available.",
-    summaryMythology: "",
-    fullMythology: "",
+    isHeritage: !!data.isHeritage,
+    nonHeritageMessage: data.nonHeritageMessage || undefined,
+    heritageConfidence: typeof data.confidence === "number" ? data.confidence : undefined,
+    name: data.isHeritage ? (data.name || "Unknown Heritage Site") : "Not a Heritage Site",
+    summaryHistory: data.isHeritage
+      ? (data.description || "No description available.")
+      : (data.nonHeritageMessage || "This is not a heritage site. Please upload a temple, ancient carving, or heritage monument."),
+    fullHistory: data.isHeritage ? (data.description || "No details available.") : "",
+    summaryMythology: data.isHeritage ? "" : "",
+    fullMythology: data.isHeritage ? "" : "",
     didYouKnow: [],
     suggestedQuestions: [],
     imageUrl: base64Image,
@@ -361,6 +404,40 @@ export async function translateHeritageInfo(
     structureParts: data.structure_parts || info.structureParts,
     language: targetLanguage,
   };
+}
+
+export async function translateNonHeritageMessage(
+  message: string,
+  targetLanguage: Language
+): Promise<string> {
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: [
+      {
+        parts: [
+          {
+            text: `Translate the following message into ${LANGUAGE_NAMES[targetLanguage]}.
+Keep it ONE short sentence. Do not add extra commentary.
+
+Message:
+${message}`,
+          },
+        ],
+      },
+    ],
+    config: {
+      responseMimeType: "application/json",
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+    },
+  });
+
+  const raw = (response.text || "{}").replace(/```(?:json)?/g, '').replace(/```/g, '').trim();
+  try {
+    const data = JSON.parse(raw);
+    return data.translatedMessage || message;
+  } catch {
+    return message;
+  }
 }
 
 export async function* chatWithStoneStream(

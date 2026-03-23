@@ -40,7 +40,7 @@ import Markdown from 'react-markdown';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { Language, HeritageInfo, CommunityStory, ChatMessage, Page } from './types';
-import { analyzeHeritageImage, generateAudio, translateHeritageInfo, chatWithStoneStream, streamHeritageGreeting, fetchDeepDiveData, identifyHeritageQuick } from './services/aiService';
+import { analyzeHeritageImage, generateAudio, translateHeritageInfo, translateNonHeritageMessage, chatWithStoneStream, streamHeritageGreeting, fetchDeepDiveData, identifyHeritageQuick } from './services/aiService';
 import { compressImage, generateHash } from './utils/imageUtils';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -457,15 +457,22 @@ export default function App() {
       // 2. Zero Initial Dependencies: Call Gemini 3 Flash only for a 3-sentence visual description
       // DO NOT call Wikipedia, Photon, or any other API in the first step.
       const info = await identifyHeritageQuick(thumbnail, language);
+      const heritageConfidence = info.heritageConfidence ?? 1;
+      const isHeritage = info.isHeritage !== false && heritageConfidence >= 0.6;
       
       // 3. Set results with minimal data
       const quickResults: HeritageInfo = {
         id: crypto.randomUUID(),
-        name: info.name || "Heritage Site",
-        summaryHistory: info.summaryHistory || "",
-        fullHistory: info.fullHistory || "",
-        summaryMythology: "",
-        fullMythology: "",
+        isHeritage,
+        heritageConfidence,
+        nonHeritageMessage: info.nonHeritageMessage,
+        name: isHeritage ? (info.name || "Heritage Site") : "Not a Heritage Site",
+        summaryHistory: isHeritage
+          ? (info.summaryHistory || "")
+          : (info.nonHeritageMessage || "This is not a heritage site. Please upload a temple, ancient carving, or heritage monument."),
+        fullHistory: isHeritage ? (info.fullHistory || "") : "",
+        summaryMythology: isHeritage ? "" : "",
+        fullMythology: isHeritage ? "" : "",
         didYouKnow: [],
         suggestedQuestions: [],
         imageUrl: selectedImage, // Use original for display
@@ -554,6 +561,25 @@ export default function App() {
 
     setIsPlaying(true);
     
+    // For non-heritage images, read only the short message.
+    if (results.isHeritage === false) {
+      const url = await generateAudio(results.nonHeritageMessage || results.summaryHistory, results.language);
+      if (url) {
+        setAudioUrl(url);
+        if (audioRef.current) {
+          audioRef.current.src = url;
+          audioRef.current.play().catch(err => {
+            console.error("Playback failed", err);
+            setIsPlaying(false);
+          });
+        }
+      } else {
+        setIsPlaying(false);
+        alert("Could not generate audio for this message.");
+      }
+      return;
+    }
+    
     // Speak the name and the content of the active tab
     let contentToSpeak = `${results.name}. `;
     
@@ -594,6 +620,35 @@ export default function App() {
   const changeResultLanguage = async (newLang: Language) => {
     if (!results || isTranslating) return;
     if (results.language === newLang) return;
+    if (results.isHeritage === false) {
+      setIsTranslating(true);
+      try {
+        // Stop audio if playing
+        audioRef.current?.pause();
+        setIsPlaying(false);
+        setAudioUrl(null);
+
+        const translatedMessage = await translateNonHeritageMessage(
+          results.nonHeritageMessage || results.summaryHistory,
+          newLang
+        );
+        setResults(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            nonHeritageMessage: translatedMessage,
+            summaryHistory: translatedMessage,
+            language: newLang,
+          };
+        });
+        setLanguage(newLang);
+      } catch (error) {
+        console.error("Non-heritage translation failed", error);
+      } finally {
+        setIsTranslating(false);
+      }
+      return;
+    }
 
     setIsTranslating(true);
     try {
@@ -1077,7 +1132,7 @@ export default function App() {
               )}
 
               {/* Deep Dive Action (Triggered Deep-Dive) */}
-              {!results.wikipediaSummary && (
+              {results.isHeritage !== false && !results.wikipediaSummary && (
                 <div className="px-6 py-8 bg-gold/10 border-b border-gold/20 text-center space-y-4">
                   <div className="flex flex-col items-center gap-2">
                     <div className="w-16 h-16 bg-gold/20 rounded-full flex items-center justify-center text-maroon">
@@ -1133,14 +1188,16 @@ export default function App() {
 
               {/* Tabs */}
               <div className="flex overflow-x-auto bg-white border-b border-black/5 px-4 no-scrollbar sticky top-[129px] z-40">
-                {[
+                {(results.isHeritage !== false ? [
                   { id: 'history', label: 'History', icon: <HistoryIcon size={16} /> },
                   { id: 'mythology', label: 'Mythology', icon: <BookOpen size={16} /> },
                   { id: 'structure', label: 'Structure', icon: <Layout size={16} /> },
                   ...(results.mode === 'specific' ? [{ id: 'carving', label: 'The Carving', icon: <Plus size={16} /> }] : []),
                   { id: 'chat', label: 'Ask the Stone', icon: <MessageSquare size={16} /> },
                   { id: 'trivia', label: 'Special Facts', icon: <Info size={16} /> }
-                ].map((tab) => (
+                ] : [
+                  { id: 'history', label: 'Result', icon: <Info size={16} /> }
+                ]).map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
@@ -1208,34 +1265,38 @@ export default function App() {
                             <HistoryIcon size={80} />
                           </div>
                           <h4 className="text-maroon font-serif font-bold text-lg mb-3 flex items-center gap-2">
-                            <Info size={18} className="text-gold" /> Quick Highlights
+                            <Info size={18} className="text-gold" /> {results.isHeritage !== false ? "Quick Highlights" : "Not a Heritage Site"}
                           </h4>
                           <p className="text-ink/70 italic leading-relaxed relative z-10">{results.summaryHistory}</p>
                         </div>
                         
-                        {results.wikipediaSummary ? (
-                          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                            <div className="p-6 bg-white rounded-3xl border border-black/5 shadow-sm space-y-4">
-                              <h4 className="text-maroon font-serif font-bold text-lg flex items-center gap-2">
-                                <Globe size={18} className="text-gold" /> From the Archives
-                              </h4>
-                              <div className="text-ink/80 leading-relaxed text-sm">
-                                <Markdown>{results.wikipediaSummary}</Markdown>
-                              </div>
-                            </div>
+                        {results.isHeritage !== false && (
+                          <>
+                            {results.wikipediaSummary ? (
+                              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                                <div className="p-6 bg-white rounded-3xl border border-black/5 shadow-sm space-y-4">
+                                  <h4 className="text-maroon font-serif font-bold text-lg flex items-center gap-2">
+                                    <Globe size={18} className="text-gold" /> From the Archives
+                                  </h4>
+                                  <div className="text-ink/80 leading-relaxed text-sm">
+                                    <Markdown>{results.wikipediaSummary}</Markdown>
+                                  </div>
+                                </div>
 
-                            <div className="space-y-4">
-                              <h4 className="text-maroon font-serif font-bold text-lg">The Full Chronicle</h4>
-                              <div className="text-ink/80 leading-relaxed">
-                                <Markdown>{results.fullHistory}</Markdown>
+                                <div className="space-y-4">
+                                  <h4 className="text-maroon font-serif font-bold text-lg">The Full Chronicle</h4>
+                                  <div className="text-ink/80 leading-relaxed">
+                                    <Markdown>{results.fullHistory}</Markdown>
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-center py-8 border-2 border-dashed border-maroon/10 rounded-3xl bg-maroon/5">
-                            <p className="text-sm text-ink/40 font-medium">Detailed historical records are locked.</p>
-                            <p className="text-xs text-ink/30 mt-1">Use the "Reveal Ancient Secrets" button above to unlock.</p>
-                          </div>
+                            ) : (
+                              <div className="text-center py-8 border-2 border-dashed border-maroon/10 rounded-3xl bg-maroon/5">
+                                <p className="text-sm text-ink/40 font-medium">Detailed historical records are locked.</p>
+                                <p className="text-xs text-ink/30 mt-1">Use the "Reveal Ancient Secrets" button above to unlock.</p>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     )}
